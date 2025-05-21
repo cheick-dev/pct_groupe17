@@ -50,6 +50,7 @@ function LoginForm() {
                 const errMessage = res?.error?.toString();
                 setErr(errMessage);
                 setIsPending(false);
+                console.log(res)
             } else {
                 router.push("/");
             }
