@@ -1,17 +1,15 @@
-export type RequestType = "naissance" | "mariage" | "deces";
-
-export type RequestStatus = "pending" | "approved" | "rejected" | "inProgress";
+import { RoleAgent, StatutDemande, TypeActe } from "@/lib/generated/prisma";
 
 export interface Request {
     id: string;
-    type: RequestType;
+    type: TypeActe;
     nom: string;
     prenom: string;
     parents?: string;
     date: string;
     lieu: string;
     email: string;
-    statut: RequestStatus;
+    statut: StatutDemande;
     created_at: string;
     paymentConfirmed: boolean;
 }
@@ -19,11 +17,11 @@ export interface Request {
 export interface User {
     id: string;
     email: string;
-    role: "admin" | "user";
+    role: RoleAgent;
 }
 
 export interface RequestFormData {
-    type: RequestType;
+    type: TypeActe;
     nom: string;
     prenom: string;
     parents?: string;
@@ -44,4 +42,26 @@ export interface RequestStats {
         mariage: number;
         deces: number;
     };
+}
+
+export interface CitoyenResquest {
+    ID_Citoyen: string;
+    Email: string;
+}
+
+export interface DemandeResquest {
+    DateActe: Date;
+    DateDemande: Date;
+    ID_Demande: string;
+    TypeActe: TypeActe;
+    Nom: string;
+    Prenom: string;
+    Citoyen: CitoyenResquest;
+    Statut: StatutDemande
+}
+
+export interface ResultData {
+    success?: boolean;
+    error?: string;
+    data?: any;
 }

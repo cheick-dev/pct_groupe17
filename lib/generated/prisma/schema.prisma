@@ -1,0 +1,155 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TypeActe {
+  Naissance
+  Mariage
+  Décès
+}
+
+enum DemandePourTier {
+  Moi
+  MonEnfant
+  UnMenbreFamile
+  Autre
+}
+
+enum StatutDemande {
+  SoumiseEnAttenteDePaiment
+  SoumisePayee
+  EnTraitement
+  Validée
+  Refusée
+  Livrée
+}
+
+enum ModePaiement {
+  Mobile_Money
+  Carte_Bancaire
+  Virement
+}
+
+enum RoleAgent {
+  Agent
+  Administrateur
+}
+
+enum TypeEntite {
+  Demande
+  Acte
+}
+
+model Citoyen {
+  ID_Citoyen    String   @id @default(uuid())
+  Nom           String
+  Prenom        String
+  DateNaissance DateTime
+  LieuNaissance String
+  Adresse       String
+  Email         String   @unique
+  Telephone     String
+  Password      String
+
+  Demandes Demande[]
+}
+
+model Demande {
+  ID_Demande      String          @id @default(uuid())
+  ID_Citoyen      String
+  TypeActe        TypeActe
+  NumeroActe      String          @default("")
+  Nom             String          @default("")
+  Prenom          String          @default("")
+  Statut          StatutDemande
+  DemandePourTier DemandePourTier
+  DateDemande     DateTime
+  DateActe        DateTime?
+  ID_Paiement     String?         @unique
+
+  Citoyen    Citoyen                    @relation(fields: [ID_Citoyen], references: [ID_Citoyen])
+  Paiement   Paiement?                  @relation(fields: [ID_Paiement], references: [ID_Paiement])
+  Document   Document_Acte?
+  Historique Historique_Modifications[]
+
+  @@index([ID_Citoyen])
+  @@index([ID_Paiement])
+}
+
+model Document_Acte {
+  ID_Document_Acte   String   @id @default(uuid())
+  ID_Demande         String   @unique
+  ID_Agent           String
+  DateDelivrance     DateTime
+  Fichier_PDF        String // lien vers un fichier, ne pas stocker le PDF
+  SignatureNumerique String
+  EstArchive         Boolean
+  DateArchivage      DateTime
+
+  Demande    Demande                    @relation(fields: [ID_Demande], references: [ID_Demande])
+  Agent      Agent                      @relation(fields: [ID_Agent], references: [ID_Agent])
+  Historique Historique_Modifications[]
+
+  @@index([ID_Demande])
+  @@index([ID_Agent])
+}
+
+model Paiement {
+  ID_Paiement    String       @id @default(uuid())
+  Montant        Decimal
+  ModePaiement   ModePaiement
+  DatePaiement   DateTime
+  Transaction_ID String       @unique
+
+  Demande Demande?
+}
+
+model Agent {
+  ID_Agent    String                     @id @default(uuid())
+  Nom         String
+  Prenom      String
+  Email       String                     @unique
+  Role        RoleAgent
+  Password    String
+  Documents   Document_Acte[]
+  Historiques Historique_Modifications[]
+}
+
+model Historique_Modifications {
+  ID_Historique    String     @id @default(uuid())
+  TypeEntite       TypeEntite
+  ID_Entite        String
+  ID_Agent         String
+  Action           String
+  DateModification DateTime
+  Ancienne_Valeur  String
+  Nouvelle_Valeur  String
+
+  Agent    Agent          @relation(fields: [ID_Agent], references: [ID_Agent])
+  Demande  Demande?       @relation(fields: [ID_Entite], references: [ID_Demande], map: "fk_demande")
+  Document Document_Acte? @relation(fields: [ID_Entite], references: [ID_Document_Acte], map: "fk_acte")
+
+  @@index([ID_Agent])
+  @@index([ID_Entite])
+}
+
+model FraisTimbre {
+  ID_FraisTimbre Int      @id @default(autoincrement())
+  TypeActe       TypeActe @unique
+  PrixTimbre     Float
+  FraisDossier   Float?   @default(0)
+  CreatedAt      DateTime @default(now())
+  UpdatedAt      DateTime @updatedAt
+}

@@ -1,351 +1,422 @@
 "use client";
-import { useState } from "react";
+import { FC, useEffect, useState } from "react";
 
-import { Request } from "@/types";
-
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Search, FileText, AlertCircle } from "lucide-react";
+import { DemandeResquest, Request } from "@/types";
 import {
     Card,
     CardContent,
     CardDescription,
-    CardFooter,
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
 import {
-    emailFormSchema,
-    EmailFormValues,
-    suiviFormSchema,
-    SuiviFormValues,
-} from "@/validation";
-import { formatDate, getRequestTypeName } from "@/utils";
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import {
+    Search,
+    FileText,
+    Clock,
+    Check,
+    X,
+    ArrowUp,
+    Filter,
+    RefreshCw,
+} from "lucide-react";
+
+import { StatutDemande, TypeActe } from "@/lib/generated/prisma";
+import { getSuivieDesDemande } from "@/server/demande/demande";
+import { getRequestTypeName, getStatusDemande } from "@/utils";
+import { useRouter } from "next/navigation";
+import { Loader } from "@/components/Loader";
 
 const SuiviPage = () => {
-    const [request, setRequest] = useState<Request | null>(null);
-    const [requestsFound, setRequestsFound] = useState<Request[]>([]);
-    const [searchPerformed, setSearchPerformed] = useState(false);
+    const router = useRouter();
+    const [requests, setRequests] = useState<DemandeResquest[]>([]);
+    const [filteredRequests, setFilteredRequests] = useState<DemandeResquest[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    // Formulaire de recherche par référence
-    const refForm = useForm<SuiviFormValues>({
-        resolver: zodResolver(suiviFormSchema),
-        defaultValues: {
-            reference: "",
-        },
-    });
+    // Filtres
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState<StatutDemande | "all">(
+        "all"
+    );
+    const [typeFilter, setTypeFilter] = useState<TypeActe | "all">("all");
 
-    // Formulaire de recherche par email
-    const emailForm = useForm<EmailFormValues>({
-        resolver: zodResolver(emailFormSchema),
-        defaultValues: {
-            email: "",
-        },
-    });
+    // Charger les demandes
+    useEffect(() => {
+        const fetchRequests = async () => {
+            setLoading(true);
+            try {
+                // Simuler une requête Supabase
+                const storedRequests = await getSuivieDesDemande();
 
-    // Recherche par référence
-    const onSearchByRef = (data: SuiviFormValues) => {
-        // Reset previous search results
-        setRequest(null);
-        setRequestsFound([]);
-        setSearchPerformed(true);
+                // Trier par date de création (plus récent d'abord)
+                const sortedRequests = [...storedRequests].sort(
+                    (a, b) =>
+                        new Date(b.DateDemande).getTime() -
+                        new Date(a.DateDemande).getTime()
+                );
 
-        try {
-            // Dans un vrai cas, ce serait une requête Supabase
-            const requests = JSON.parse(
-                localStorage.getItem("requests") || "[]"
-            );
-
-            // Recherche avec une référence qui peut être partielle
-            const foundRequest = requests.find((r: Request) =>
-                r.id.toLowerCase().includes(data.reference.toLowerCase())
-            );
-
-            if (foundRequest) {
-                setRequest(foundRequest);
+                setRequests(sortedRequests);
+                setFilteredRequests(sortedRequests);
+            } catch (error) {
+                console.error("Erreur lors du chargement des demandes:", error);
+            } finally {
+                setLoading(false);
             }
-        } catch (error) {
-            console.error("Erreur lors de la recherche:", error);
+        };
+
+        fetchRequests();
+    }, []);
+
+    // Appliquer les filtres
+    useEffect(() => {
+        let result = [...requests];
+
+        // Filtre par terme de recherche
+        if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            result = result.filter(
+                (req) =>
+                    req.ID_Demande.toLowerCase().includes(term) ||
+                    req.Nom.toLowerCase().includes(term) ||
+                    req.Prenom.toLowerCase().includes(term) ||
+                    req.Citoyen.Email.toLowerCase().includes(term)
+            );
         }
+
+        // Filtre par statut
+        if (statusFilter !== "all") {
+            result = result.filter((req) => req.Statut === statusFilter);
+        }
+
+        // Filtre par type
+        if (typeFilter !== "all") {
+            result = result.filter((req) => req.TypeActe === typeFilter);
+        }
+
+        setFilteredRequests(result);
+    }, [requests, searchTerm, statusFilter, typeFilter]);
+
+    // Réinitialiser les filtres
+    const resetFilters = () => {
+        setSearchTerm("");
+        setStatusFilter("all");
+        setTypeFilter("all");
     };
 
-    // Recherche par email
-    const onSearchByEmail = (data: EmailFormValues) => {
-        // Reset previous search results
-        setRequest(null);
-        setRequestsFound([]);
-        setSearchPerformed(true);
-
-        try {
-            // Dans un vrai cas, ce serait une requête Supabase
-            const requests = JSON.parse(
-                localStorage.getItem("requests") || "[]"
-            );
-
-            // Filtrer par email
-            const foundRequests = requests.filter(
-                (r: Request) =>
-                    r.email.toLowerCase() === data.email.toLowerCase()
-            );
-
-            if (foundRequests.length > 0) {
-                setRequestsFound(foundRequests);
-            }
-        } catch (error) {
-            console.error("Erreur lors de la recherche:", error);
-        }
+    // Formater les dates
+    const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return new Intl.DateTimeFormat("fr-FR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+        }).format(date);
     };
 
-    // Fonction pour afficher le status de la demande
-    const renderStatusBadge = (status: string) => {
+
+
+    // Obtenir l'icône et la couleur selon le statut
+    const getStatusInfo = (status: string) => {
         switch (status) {
-            case "pending":
-                return (
-                    <Badge
-                        variant="outline"
-                        className="bg-yellow-50 text-yellow-700 border-yellow-200"
-                    >
-                        En attente
-                    </Badge>
-                );
-            case "approved":
-                return (
-                    <Badge
-                        variant="outline"
-                        className="bg-green-50 text-green-700 border-green-200"
-                    >
-                        Approuvée
-                    </Badge>
-                );
-            case "rejected":
-                return (
-                    <Badge
-                        variant="outline"
-                        className="bg-red-50 text-red-700 border-red-200"
-                    >
-                        Rejetée
-                    </Badge>
-                );
-            case "inProgress":
-                return (
-                    <Badge
-                        variant="outline"
-                        className="bg-blue-50 text-blue-700 border-blue-200"
-                    >
-                        En traitement
-                    </Badge>
-                );
+            case StatutDemande.SoumisePayee:
+                return {
+                    icon: <Clock className="h-4 w-4" />,
+                    color: "text-yellow-500",
+                    badge: "bg-yellow-50 text-yellow-700 border-yellow-200",
+                };
+            case StatutDemande.Validée:
+                return {
+                    icon: <Check className="h-4 w-4" />,
+                    color: "text-green-500",
+                    badge: "bg-green-50 text-green-700 border-green-200",
+                };
+            case StatutDemande.Livrée:
+                return {
+                    icon: <Check className="h-4 w-4" />,
+                    color: "text-green-500",
+                    badge: "bg-green-50 text-green-700 border-green-200",
+                };
+            case StatutDemande.Refusée:
+                return {
+                    icon: <X className="h-4 w-4" />,
+                    color: "text-red-500",
+                    badge: "bg-red-50 text-red-700 border-red-200",
+                };
+            case StatutDemande.EnTraitement:
+                return {
+                    icon: <ArrowUp className="h-4 w-4" />,
+                    color: "text-blue-500",
+                    badge: "bg-blue-50 text-blue-700 border-blue-200",
+                };
             default:
-                return <Badge variant="outline">{status}</Badge>;
+                return {
+                    icon: <FileText className="h-4 w-4" />,
+                    color: "text-gray-500",
+                    badge: "bg-gray-50 text-gray-700 border-gray-200",
+                };
         }
     };
 
-    // Rendu d'une demande
-    const renderRequestDetails = (request: Request) => (
-        <div
-            key={request.id}
-            className="mb-6 border rounded-lg overflow-hidden"
-        >
-            <div className="bg-gray-50 p-4 flex justify-between items-center border-b">
-                <div>
-                    <h3 className="font-medium text-gray-800">
-                        {getRequestTypeName(request.type)}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                        Référence: {request.id.substring(0, 8).toUpperCase()}
-                    </p>
-                </div>
-                {renderStatusBadge(request.statut)}
-            </div>
 
-            <div className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <p className="text-sm text-gray-500">Nom</p>
-                        <p className="font-medium">{request.nom}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-500">Prénom</p>
-                        <p className="font-medium">{request.prenom}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-500">Date</p>
-                        <p className="font-medium">{request.date}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-500">Lieu</p>
-                        <p className="font-medium">{request.lieu}</p>
-                    </div>
-                    {request.parents && (
-                        <div className="col-span-2">
-                            <p className="text-sm text-gray-500">Parents</p>
-                            <p className="font-medium">{request.parents}</p>
-                        </div>
-                    )}
-                    <div className="col-span-2">
-                        <p className="text-sm text-gray-500">Soumis le</p>
-                        <p className="font-medium">
-                            {formatDate(request.created_at)}
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    // Afficher un message si aucun résultat
-    const renderNoResults = () => (
-        <div className="text-center py-10">
-            <AlertCircle className="h-10 w-10 text-yellow-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-800 mb-2">
-                Aucune demande trouvée
-            </h3>
-            <p className="text-gray-500 max-w-md mx-auto">
-                Nous n'avons pas pu trouver de demande correspondant à votre
-                recherche. Veuillez vérifier les informations saisies.
-            </p>
-        </div>
-    );
+    if (loading) {
+        return <Loader />;
+    }
 
     return (
-        <div className="max-w-3xl mx-auto">
-            <Card>
+        <>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold">Liste de mes demandes</h1>
+                <div className="flex items-center space-x-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={resetFilters}
+                        className="flex items-center"
+                    >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Actualiser
+                    </Button>
+                </div>
+            </div>
+
+            <Card className="mb-6">
                 <CardHeader>
-                    <CardTitle>Suivre ma demande</CardTitle>
+                    <CardTitle className="text-lg">Filtres</CardTitle>
                     <CardDescription>
-                        Consultez l'état de votre demande d'acte d'état civil
+                        Filtrez les demandes selon différents critères
                     </CardDescription>
                 </CardHeader>
-
                 <CardContent>
-                    <Tabs defaultValue="reference">
-                        <TabsList className="grid w-full grid-cols-2 mb-6">
-                            <TabsTrigger value="reference">
-                                Par référence
-                            </TabsTrigger>
-                            <TabsTrigger value="email">Par email</TabsTrigger>
-                        </TabsList>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label
+                                htmlFor="search"
+                                className="text-sm font-medium block mb-1"
+                            >
+                                Recherche
+                            </label>
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                                <Input
+                                    id="search"
+                                    placeholder="Nom, email, référence..."
+                                    className="pl-9"
+                                    value={searchTerm}
+                                    onChange={(e) =>
+                                        setSearchTerm(e.target.value)
+                                    }
+                                />
+                            </div>
+                        </div>
 
-                        <TabsContent value="reference">
-                            <Alert className="mb-6">
-                                <FileText className="h-4 w-4" />
-                                <AlertTitle>Suivi par référence</AlertTitle>
-                                <AlertDescription>
-                                    Saisissez la référence de votre demande pour
-                                    consulter son état d'avancement.
-                                </AlertDescription>
-                            </Alert>
+                        <div>
+                            <label
+                                htmlFor="status-filter"
+                                className="text-sm font-medium block mb-1"
+                            >
+                                Statut
+                            </label>
+                            <Select
+                                value={statusFilter}
+                                onValueChange={(value) =>
+                                    setStatusFilter(
+                                        value as StatutDemande | "all"
+                                    )
+                                }
+                            >
+                                <SelectTrigger id="status-filter">
+                                    <SelectValue placeholder="Tous les statuts" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">
+                                        Tous les statuts
+                                    </SelectItem>
+                                    {Object.values(StatutDemande).map((type) => (
+                                        <SelectItem key={type} value={type}>
+                                            {getStatusDemande(type)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                            <Form {...refForm}>
-                                <form
-                                    onSubmit={refForm.handleSubmit(
-                                        onSearchByRef
-                                    )}
-                                    className="space-y-4"
-                                >
-                                    <FormField
-                                        control={refForm.control}
-                                        name="reference"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    Référence de la demande
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="Exemple: ABC123"
-                                                        {...field}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <Button
-                                        type="submit"
-                                        className="bg-ci-orange hover:bg-ci-orange/90 w-full"
-                                    >
-                                        <Search className="mr-2" /> Rechercher
-                                    </Button>
-                                </form>
-                            </Form>
-                        </TabsContent>
-
-                        <TabsContent value="email">
-                            <Alert className="mb-6">
-                                <FileText className="h-4 w-4" />
-                                <AlertTitle>Suivi par email</AlertTitle>
-                                <AlertDescription>
-                                    Entrez l'adresse email associée à votre
-                                    demande.
-                                </AlertDescription>
-                            </Alert>
-
-                            <Form {...emailForm}>
-                                <form
-                                    onSubmit={emailForm.handleSubmit(
-                                        onSearchByEmail
-                                    )}
-                                    className="space-y-4"
-                                >
-                                    <FormField
-                                        control={emailForm.control}
-                                        name="email"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>
-                                                    Adresse email
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="votre-email@example.com"
-                                                        {...field}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <Button
-                                        type="submit"
-                                        className="bg-ci-orange hover:bg-ci-orange/90 w-full"
-                                    >
-                                        <Search className="mr-2" /> Rechercher
-                                    </Button>
-                                </form>
-                            </Form>
-                        </TabsContent>
-                    </Tabs>
+                        <div>
+                            <label
+                                htmlFor="type-filter"
+                                className="text-sm font-medium block mb-1"
+                            >
+                                Type de document
+                            </label>
+                            <Select
+                                value={typeFilter}
+                                onValueChange={(value) =>
+                                    setTypeFilter(value as TypeActe | "all")
+                                }
+                            >
+                                <SelectTrigger id="type-filter">
+                                    <SelectValue placeholder="Tous les types" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">
+                                        Tous les types
+                                    </SelectItem>
+                                    {Object.values(TypeActe).map((type) => (
+                                        <SelectItem key={type} value={type}>
+                                            {getRequestTypeName(type)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                 </CardContent>
+            </Card>
 
-                <CardFooter>
-                    {searchPerformed && (
-                        <div className="space-y-4">
-                            {request && renderRequestDetails(request)}
-                            {requestsFound.length > 0 &&
-                                requestsFound.map(renderRequestDetails)}
-                            {requestsFound.length === 0 &&
-                                !request &&
-                                renderNoResults()}
+            <Card>
+                <CardContent className="p-0">
+                    {filteredRequests.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 px-4">
+                            <Filter className="h-12 w-12 text-gray-400 mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 mb-1">
+                                Aucune demande trouvée
+                            </h3>
+                            <p className="text-gray-500 text-center max-w-md">
+                                Aucune demande ne correspond à vos critères de
+                                filtrage. Essayez de modifier vos filtres ou de
+                                créer une nouvelle demande.
+                            </p>
+                            <Button
+                                variant="outline"
+                                className="mt-4"
+                                onClick={resetFilters}
+                            >
+                                Réinitialiser les filtres
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b bg-gray-50">
+                                        <th className="text-left py-3 px-4 font-medium">
+                                            Référence
+                                        </th>
+                                        <th className="text-left py-3 px-4 font-medium">
+                                            Type
+                                        </th>
+                                        <th className="text-left py-3 px-4 font-medium">
+                                            Nom & prénom
+                                        </th>
+                                        <th className="text-left py-3 px-4 font-medium">
+                                            Email
+                                        </th>
+                                        <th className="text-left py-3 px-4 font-medium">
+                                            Date
+                                        </th>
+                                        <th className="text-left py-3 px-4 font-medium">
+                                            Statut
+                                        </th>
+                                        <th className="text-right py-3 px-4 font-medium">
+                                            Action
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredRequests.map((request) => {
+                                        const statusInfo = getStatusInfo(
+                                            request.Statut
+                                        );
+                                        return (
+                                            <tr
+                                                key={request.ID_Demande}
+                                                className="border-b hover:bg-gray-50"
+                                            >
+                                                <td className="py-3 px-4 font-medium">
+                                                    {request.ID_Demande
+                                                        .substring(0, 8)
+                                                        .toUpperCase()}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {getRequestTypeName(
+                                                        request.TypeActe
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-4">{`${request.Nom} ${request.Prenom}`}</td>
+                                                <td className="py-3 px-4">
+                                                    <span className="max-w-[150px] truncate inline-block">
+                                                        {request.Citoyen.Email}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    {formatDate(
+                                                        request.DateDemande.toDateString()
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={
+                                                            statusInfo.badge
+                                                        }
+                                                    >
+                                                        <span className="flex items-center">
+                                                            {statusInfo.icon}
+                                                            <span className="ml-1">
+                                                                {getStatusDemande(
+                                                                    request.Statut
+                                                                )}
+                                                            </span>
+                                                        </span>
+                                                    </Badge>
+                                                </td>
+                                                <td className="py-3 px-4 text-right">
+                                                    {
+                                                        request.Statut == StatutDemande.SoumiseEnAttenteDePaiment
+                                                            ?
+                                                            <Button
+                                                                size="sm"
+                                                                className="bg-ci-orange hover:bg-ci-orange/90"
+                                                                onClick={() => {
+
+
+                                                                    router.push(`/paiement/${request.ID_Demande}`);
+                                                                }}
+                                                            >
+                                                                Payer
+                                                            </Button>
+                                                            :
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => {
+
+
+                                                                    router.push(`/confirmation/${request.ID_Demande}`);
+                                                                }}
+                                                            >
+                                                                Détails
+                                                            </Button>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     )}
-                </CardFooter>
+                </CardContent>
             </Card>
-        </div>
+        </>
     );
 };
 

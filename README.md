@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PCT - Plateforme de gestion d'actes d'état civil
 
-## Getting Started
+## Prérequis
 
-First, run the development server:
+-   Node.js (version recommandée : 18+)
+-   pnpm (ou npm/yarn)
+-   PostgreSQL (utilisé via NeonDB dans ce projet)
+-   Un fichier `.env.local` à la racine du projet
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Installation
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. **Cloner le dépôt :**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+    ```bash
+    git clone <url-du-repo>
+    cd etat-civil-groupe-17
+    ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Installer les dépendances :**
 
-## Learn More
+    ```bash
+    pnpm install
+    ```
 
-To learn more about Next.js, take a look at the following resources:
+    ou
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+    ```bash
+    npm install
+    ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. **Configurer les variables d'environnement :**
 
-## Deploy on Vercel
+    Crée un fichier `.env.local` à la racine du projet et ajoute les variables suivantes (exemple issu du projet) :
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+    ```
+    DATABASE_URL="postgresql://utilisateur:motdepasse@localhost:5432/nom_de_la_base?schema=public"
+    CITOYEN_SESSION_SECRET=ton_secret_session
+    ADMIN_SESSION_SECRET=ton_secret_session
+    PUBLIC_KEY=ton_PUBLIC_KEY
+    ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. **Configurer la base de données :**
+
+    ```
+    npx prisma generate
+    NB: Au besoin, pour reinisialiser la BD, executer npx prisma migrate reset
+    npx prisma migrate dev --name initial
+
+    Pour visualiser et modifier les données de votre base
+    npx prisma studio
+    ```
+
+## Scripts disponibles
+
+-   `pnpm dev` : Démarre le serveur de développement Next.js
+-   `pnpm build` : Build l'application pour la production
+-   `pnpm start` : Lance l'application en mode production
+-   `pnpm lint` : Lint le code
+
+ou 
+
+-   npm run dev
+
+## Structure du projet
+
+-   `app/` : Pages et routes Next.js
+-   `components/` : Composants React réutilisables
+-   `public/` : Fichiers statiques (icônes, images)
+-   `utils/`, `types/`, `validation/` : Utilitaires, types TypeScript, schémas de validation
+
+## Technologies principales
+
+-   Next.js
+-   React
+-   prisma
+-   PostgreSQL
+-   TailwindCSS
+-   Radix UI
+-   React Hook Form, Zod
+
+## Lancement du projet
+
+1. Démarre la base de données PostgreSQL (ou assure-toi que NeonDB est accessible).
+2. Lance le serveur de développement :
+
+    ```bash
+    pnpm dev ou npm run dev
+    ```
+
+    L'application sera accessible sur [http://localhost:3000](http://localhost:3000).
+
+## Notes
+
+-   Les routes protégées utilisent un middleware pour la gestion des sessions.
+-   Les secrets doivent rester confidentiels et ne jamais être commit dans le dépôt.

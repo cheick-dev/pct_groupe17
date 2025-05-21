@@ -1,38 +1,60 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import {
     FileText,
     LayoutDashboard,
-    LogOut,
     Menu,
     PieChart,
+    User,
+    HandCoins,
     X,
 } from "lucide-react";
 import Link from "next/link";
-import { redirect, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Logo } from "./Logo";
-import { authClient } from "@/lib/auth-client";
+import LogOutButton from "./LogOutButton";
+import { getAgent } from "@/server/auth/agent";
+import { Agent } from "@/lib/generated/prisma";
 
-const menuItems = [
-    {
-        label: "Tableau de bord",
-        icon: <LayoutDashboard className="h-5 w-5" />,
-        href: "/dashboard",
-    },
-    {
-        label: "Demandes",
-        icon: <FileText className="h-5 w-5" />,
-        href: "/dashboard/liste-demande",
-    },
-    {
-        label: "Statistiques",
-        icon: <PieChart className="h-5 w-5" />,
-        href: "/dashboard/stats",
-    },
-];
+
 
 function SideBar() {
+    let [user, setUser] = useState<Agent | null>(null)
+    const getUser = async () => {
+        const res = await getAgent()
+        setUser(res)
+    }
+    useEffect(() => {
+        getUser()
+    }, [])
+    const menuItems = [
+        {
+            label: "Tableau de bord",
+            icon: <LayoutDashboard className="h-5 w-5" />,
+            href: "/admin/dashboard",
+        },
+        {
+            label: "Demandes",
+            icon: <FileText className="h-5 w-5" />,
+            href: "/admin/dashboard/liste-demande",
+        },
+        {
+            label: "Statistiques",
+            icon: <PieChart className="h-5 w-5" />,
+            href: "/admin/dashboard/stats",
+        },
+        ...(user?.Role === "Administrateur" ? [{
+            label: "Agents",
+            icon: <User className="h-5 w-5" />,
+            href: "/admin/dashboard/agents",
+        }, {
+            label: "Tarifs",
+            icon: <HandCoins className="h-5 w-5" />,
+            href: "/admin/dashboard/tarif",
+        }] : []),
+
+    ];
     const pathname = usePathname();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -84,36 +106,22 @@ md:translate-x-0 md:z-auto
                                         href={item.href}
                                         className={`
           flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors
-          ${
-              isActive
-                  ? "bg-ci-orange/10 text-ci-orange"
-                  : "text-gray-700 hover:bg-gray-100 hover:text-ci-orange"
-          }
+          ${isActive
+                                                ? "bg-ci-orange/10 text-ci-orange"
+                                                : "text-gray-700 hover:bg-gray-100 hover:text-ci-orange"
+                                            }
         `}
                                     >
                                         {item.icon}
-                                        <span className="ml-3">
-                                            {item.label}
-                                        </span>
+                                        <span className="ml-3">{item.label}</span>
                                     </Link>
                                 );
                             })}
                         </nav>
                     </div>
 
-                    <div className="p-4 border-t">
-                        <Button
-                            variant="ghost"
-                            onClick={async () => {
-                                await authClient.signOut();
-
-                                redirect("/");
-                            }}
-                            className="w-full justify-start text-gray-700 hover:text-ci-orange hover:bg-gray-100"
-                        >
-                            <LogOut className="h-5 w-5 mr-3" />
-                            Déconnexion
-                        </Button>
+                    <div className={`p-4 border-t w-full flex `}>
+                        <LogOutButton />
                     </div>
                 </div>
             </aside>

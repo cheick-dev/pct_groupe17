@@ -2,34 +2,12 @@ import { FileText, User, Search } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getUser } from "@/server/user";
+import NosServiceLayout from "@/components/Layouts/NosServiceLayout";
+// import { getUser } from "@/server/user";
+
 
 export default async function HomePage() {
-    const session = await getUser();
-
-    const features = [
-        {
-            title: "Demande d'acte de naissance",
-            description:
-                "Obtenez une copie de votre acte de naissance facilement et rapidement.",
-            icon: <FileText className="h-10 w-10 text-ci-orange" />,
-            href: "/nouvelle-demande?type=naissance",
-        },
-        {
-            title: "Demande d'acte de mariage",
-            description:
-                "Demandez une copie de votre acte de mariage en quelques clics.",
-            icon: <FileText className="h-10 w-10 text-ci-orange" />,
-            href: "/denouvelle-demande?type=mariage",
-        },
-        {
-            title: "Demande d'acte de décès",
-            description:
-                "Obtenez un certificat de décès simplement et rapidement.",
-            icon: <FileText className="h-10 w-10 text-ci-orange" />,
-            href: "/nouvelle-demande?type=deces",
-        },
-    ];
+    // const session = await getUser();
 
     return (
         <main className="px-4 md:px-8">
@@ -44,7 +22,7 @@ export default async function HomePage() {
                     demandes et recevez vos documents sans vous déplacer.
                 </p>
                 <div className="flex flex-wrap justify-center gap-4">
-                    <Link href="/nouvelle-demande">
+                    <Link href="#nos-service">
                         <Button
                             size="lg"
                             className="bg-ci-orange hover:bg-ci-orange/90"
@@ -59,8 +37,8 @@ export default async function HomePage() {
                             Suivre ma demande
                         </Button>
                     </Link>
-                    {session && (
-                        <Link href="/login">
+                    {/* {session && session.user.role !== "user" && (
+                        <Link href="/dashboard">
                             <Button
                                 size="lg"
                                 variant="secondary"
@@ -70,41 +48,12 @@ export default async function HomePage() {
                                 Espace administration
                             </Button>
                         </Link>
-                    )}
+                    )} */}
                 </div>
             </section>
 
             {/* Services */}
-            <section className="py-8">
-                <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
-                    Nos services
-                </h2>
-                <div className="grid md:grid-cols-3 gap-6">
-                    {features.map((feature, index) => (
-                        <Card
-                            key={index}
-                            className="border border-gray-200 hover:border-ci-orange/50 transition-all duration-300 hover:shadow-md"
-                        >
-                            <CardContent className="p-6 flex flex-col items-center text-center">
-                                <div className="mb-4 p-3 bg-gray-50 rounded-full">
-                                    {feature.icon}
-                                </div>
-                                <h3 className="text-xl font-semibold mb-2 text-gray-800">
-                                    {feature.title}
-                                </h3>
-                                <p className="text-gray-600 mb-4">
-                                    {feature.description}
-                                </p>
-                                <Link href={feature.href}>
-                                    <Button className="mt-auto">
-                                        Faire une demande
-                                    </Button>
-                                </Link>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            </section>
+            <NosServiceLayout />
 
             {/* Processus */}
             <section className="py-12 mt-8 bg-gray-50 rounded-xl p-8">

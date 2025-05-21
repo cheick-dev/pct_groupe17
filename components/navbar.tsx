@@ -1,10 +1,9 @@
-// "use client";
+//"use client";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Logo } from "./Logo";
 import { UserCircle, Menu } from "lucide-react";
-// import { auth } from "@/lib/auth";
-import { getUser } from "@/server/user";
+
 import {
     Sheet,
     SheetContent,
@@ -14,15 +13,27 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 import Link from "next/link";
+import LogOutButton from "./LogOutButton";
+import { getCitoyen } from "@/server/auth/citoyen";
 
 export const Navbar = async () => {
-    const session = await getUser();
+
+    const user = await getCitoyen();
+
+    // useEffect(() => {
+    //     // Set the base URL using location
+    //     setBaseUrl(`${location.protocol}//${location.host}`);
+
+    // }, []);
+
     const navLinks = [
         { href: "/", label: "Accueil" },
-        { href: "/nouvelle-demande", label: "Nouvelle Demande" },
-        ...(session ? [{ href: "/dashboard", label: "Dashboard" }] : []),
-        { href: "/suivi-demande", label: "Suivi Demande" },
+        { href: `../#nos-service`, label: "Nouvelle Demande" },
+        ...(user ? [{ href: "/suivi-demande", label: "Suivi mes demandes" }] : []),
+
     ];
+
+    console.log(user?.id);
 
     const renderNavLinks = () => (
         <>
@@ -44,40 +55,27 @@ export const Navbar = async () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between h-16">
                     <div className="flex items-center">
-                        <Link
-                            href="/"
-                            className="flex-shrink-0 flex items-center"
-                        >
+                        <Link href="/" className="flex-shrink-0 flex items-center">
                             <Logo />
                         </Link>
 
                         {/* Desktop navigation */}
                         <div className="hidden md:ml-6 md:flex md:space-x-4">
-                            <ul className="flex space-x-1">
-                                {renderNavLinks()}
-                            </ul>
+                            <ul className="flex space-x-1">{renderNavLinks()}</ul>
                         </div>
                     </div>
 
                     {/* Auth & mobile menu */}
                     <div className="flex items-center">
-                        {session ? (
-                            <Button
-                                // onClick={() => authClient.signOut()}
-                                variant="ghost"
-                                className="flex items-center gap-2"
-                            >
-                                <UserCircle className="h-5 w-5" />
-                                <span className="hidden sm:inline">
-                                    Déconnexion
-                                </span>
-                            </Button>
+                        {user ? (
+                            <>
+                                <p>{user.nom}</p>
+                                <LogOutButton />
+                            </>
                         ) : (
                             <Link href="/login" className={buttonVariants()}>
                                 <UserCircle className="h-5 w-5" />
-                                <span className="hidden sm:inline">
-                                    Connexion
-                                </span>
+                                <span className="hidden sm:inline">Connexion</span>
                             </Link>
                         )}
 
