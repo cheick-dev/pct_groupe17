@@ -45,6 +45,7 @@ export async function login(formData: FormData): Promise<ResultData> {
             success: true,
         };
     } catch (error) {
+        console.log(error)
         return {
             error: ErrorsMessage.errors
         };
